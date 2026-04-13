@@ -3,11 +3,13 @@ import pytest
 from application_client.command_sender import PbcCommandSender, Errors
 from application_client.response_unpacker import unpack_get_address_response
 from application_client.transaction import Address, from_hex
+from ecdsa.curves import SECP256k1
+from ecdsa.keys import SigningKey
 from ragger.bip import calculate_public_key_and_chaincode, CurveChoice
 from ragger.bip.seed import SPECULOS_MNEMONIC
 from ragger.error import ExceptionRAPDU
 from ragger.navigator import NavInsID, NavIns
-from utils import ROOT_SCREENSHOT_PATH, KEY_PATH
+from utils import ROOT_SCREENSHOT_PATH, KEY_PATH, calculate_private_key
 
 
 # In this test we check that the GET_ADDRESS works in non-confirmation mode
@@ -112,6 +114,41 @@ def test_get_address_for_seed(backend, cli_user_seed):
     ref_public_key, _ = calculate_public_key_and_chaincode(
         CurveChoice.Secp256k1, path=KEY_PATH, mnemonic=mnemonic)
     ref_address = Address.from_public_key(from_hex(ref_public_key))
+    assert blockchain_address == ref_address
+
+
+def test_get_address_for_seed_with_private_key(backend, cli_user_seed):
+    """Derive the address for {@link KEY_PATH} from the private key computed
+    offline for the seed phrase supplied via ``--seed``, and assert the device
+    returns the matching address.
+
+    Uses {@link calculate_private_key} to derive the private key, then
+    reconstructs the uncompressed public key from it to compute the expected
+    {@link Address} — mirroring exactly what the device does internally.
+
+    When no ``--seed`` option is given, the test falls back to the default
+    Speculos mnemonic so it can always run without extra arguments.
+
+    Example invocation with a custom seed phrase::
+
+        pytest tests/test_address_cmd.py::test_get_address_for_seed_with_private_key \\
+            --device nanox \\
+            --seed "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    """
+    mnemonic = cli_user_seed if cli_user_seed else SPECULOS_MNEMONIC
+
+    private_key_hex = calculate_private_key(CurveChoice.Secp256k1,
+                                            path=KEY_PATH,
+                                            mnemonic=mnemonic)
+    signing_key = SigningKey.from_string(bytes.fromhex(private_key_hex),
+                                         curve=SECP256k1)
+    uncompressed_pubkey = b'\x04' + signing_key.verifying_key.to_string()
+    ref_address = Address.from_public_key(uncompressed_pubkey)
+
+    client = PbcCommandSender(backend)
+    response = client.get_address(path=KEY_PATH).data
+    blockchain_address = unpack_get_address_response(response)
+
     assert blockchain_address == ref_address
 
 
