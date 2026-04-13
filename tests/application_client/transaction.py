@@ -17,7 +17,6 @@ class TransactionError(Exception):
 
 
 def from_hex(hexstr: str) -> bytes:
-    print(hexstr)
     return bytes.fromhex(hexstr.replace("_", ''))
 
 
@@ -47,6 +46,9 @@ class Address(Serializable):
 
     def serialize(self) -> bytes:
         return self.raw_bytes
+
+    def hex(self) -> 'str':
+        return self.raw_bytes.hex()
 
     @staticmethod
     def from_hex(address: str) -> 'Address':
