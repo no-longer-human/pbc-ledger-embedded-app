@@ -12,8 +12,8 @@ from utils import ROOT_SCREENSHOT_PATH, KEY_PATH
 # In this test we check that the GET_ADDRESS works in non-confirmation mode
 def test_get_address_no_confirm(backend):
     for path in [
-            KEY_PATH, "m/3757'/0'/0/0/0", "m/3757'/0'/910'/0/0",
-            "m/3757'/0'/255/255/255", "m/3757'/0'/2147483647/0/0/0/0/0/0/0"
+            KEY_PATH, "m/44'/3757'/0'/0/0", "m/44'/3757'/910'/0/0",
+            "m/44'/3757'/255/255/255", "m/44'/3757'/0/0/0/0/0/0/0"
     ]:
         client = PbcCommandSender(backend)
         response = client.get_address(path=path).data
